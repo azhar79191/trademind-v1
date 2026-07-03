@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
@@ -10,6 +10,12 @@ export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -41,10 +47,7 @@ export default function Login() {
     },
   });
 
-  if (isAuthenticated) {
-    navigate("/dashboard", { replace: true });
-    return null;
-  }
+  if (isAuthenticated) return null;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
