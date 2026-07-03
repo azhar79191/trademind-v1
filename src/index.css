@@ -5,8 +5,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root,
-  [data-theme="dark"] {
+  :root {
     --navy-base: #0A0E1A;
     --navy-surface: #111827;
     --navy-highlight: #162032;
@@ -17,27 +16,6 @@
     --danger: #EF4444;
     --success: #10B981;
     --warning: #F59E0B;
-    --header-bg: rgba(17, 24, 39, 0.7);
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --radius: 0.5rem;
-  }
-
-  [data-theme="light"] {
-    --navy-base: #F0F4F8;
-    --navy-surface: #FFFFFF;
-    --navy-highlight: #E2E8F0;
-    --lime-primary: #4F7A00;
-    --white-pure: #1A202C;
-    --grey-dim: #4A5568;
-    --grey-subtle: #EDF2F7;
-    --danger: #E53E3E;
-    --success: #38A169;
-    --warning: #D69E2E;
-    --header-bg: rgba(255, 255, 255, 0.85);
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --border: 214.3 31.8% 91.4%;
@@ -46,16 +24,23 @@
     --radius: 0.5rem;
   }
 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
-    @apply antialiased;
+    @apply text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background-color: var(--navy-base);
     color: var(--white-pure);
-    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   html {

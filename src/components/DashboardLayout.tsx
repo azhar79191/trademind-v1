@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
-import { useTheme } from "@/providers/ThemeContext";
 import {
   LayoutDashboard,
   LineChart,
@@ -21,8 +20,6 @@ import {
   Zap,
   BarChart3,
   History,
-  Sun,
-  Moon,
 } from "lucide-react";
 
 const navItems = [
@@ -40,8 +37,7 @@ const navItems = [
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, isAuthenticated } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -66,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
 
   return (
-    <div className="min-h-screen flex" style={{ background: "var(--navy-base)", color: "var(--white-pure)", transition: "background-color 0.3s ease, color 0.3s ease" }}>
+    <div className="min-h-screen flex" style={{ background: "var(--navy-base)" }}>
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -105,9 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.path}
                 to={item.path}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? "text-white"
-                    : "hover:text-white transition-colors"
+                  isActive ? "text-white" : "hover:text-white transition-colors"
                 }`}
                 style={{
                   background: isActive ? "var(--navy-highlight)" : "transparent",
@@ -127,9 +121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link
               to="/admin"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 mt-4 ${
-                location.pathname === "/admin"
-                  ? "text-white"
-                  : "hover:text-white transition-colors"
+                location.pathname === "/admin" ? "text-white" : "hover:text-white transition-colors"
               }`}
               style={{
                 background: location.pathname === "/admin" ? "var(--navy-highlight)" : "transparent",
@@ -192,14 +184,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <div className="flex items-center gap-3">
-              <button
-                onClick={toggleTheme}
-                className="relative p-2 rounded-lg transition-colors hover:text-white"
-                style={{ color: "var(--grey-dim)" }}
-                title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              >
-                {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
               <button
                 onClick={() => navigate("/chat")}
                 className="relative p-2 rounded-lg transition-colors hover:text-white"
