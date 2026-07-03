@@ -1,26 +1,11 @@
 import { z } from "zod";
 import { eq, and, desc } from "drizzle-orm";
-import { createRouter, authedQuery, authedMutation } from "./middleware";
+import { createRouter, publicQuery, authedQuery, authedMutation } from "./middleware";
 import { getDb } from "./queries/connection";
 import { chatConversations, chatMessages } from "@db/schema";
 
 // ─── AI Agent Integration ────────────────────────────────────────────
 const AI_AGENT_URL = process.env.AI_AGENT_API_URL || "http://localhost:8000";
-let aiAgentAvailable = false;
-
-// Check if AI agent is available
-async function checkAIAgent(): Promise<boolean> {
-  try {
-    const response = await fetch(`${AI_AGENT_URL}/health`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    aiAgentAvailable = response.ok;
-    return aiAgentAvailable;
-  } catch {
-    aiAgentAvailable = false;
-    return false;
-  }
-}
 
 // Call AI agent for intelligent responses
 async function callAIAgent(query: string, pair?: string): Promise<{ answer: string; suggestion?: string | null; [key: string]: any } | null> {
@@ -32,7 +17,7 @@ async function callAIAgent(query: string, pair?: string): Promise<{ answer: stri
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, pair: pair || "BTC/USDT" }),
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     });
 
     console.log(`📡 AI Agent response status: ${response.status}`);
@@ -52,10 +37,6 @@ async function callAIAgent(query: string, pair?: string): Promise<{ answer: stri
   }
 }
 
-// Check AI agent availability on startup
-checkAIAgent().catch(console.error);
-// Recheck every minute
-setInterval(() => checkAIAgent().catch(console.error), 60000);
 
 export const chatRouter = createRouter({
   // ─── Conversations ─────────────────────────────────────────────────
@@ -145,7 +126,7 @@ export const chatRouter = createRouter({
       return { success: true };
     }),
 
-  quickAnalyze: authedQuery
+  quickAnalyze: publicQuery
     .input(z.object({ query: z.string() }))
     .query(async ({ input }) => {
       return await generateAIResponseAsync(input.query);
@@ -168,36 +149,8 @@ function extractPair(text: string): string | null {
 }
 
 function generateMarketAnalysis(message: string): AIResponse {
-  // REMOVED: No more fake random data generation!
-  // This function should NEVER be called - AI Agent handles all analysis
-  
-  return {
-    content: `
-# ⚠️ Real-Time Market Analysis
-
-I can provide accurate market analysis, but I need the AI Agent running to fetch real-time data.
-
-**To get real market analysis:**
-1. Make sure the AI Agent is running on http://localhost:8000
-2. The AI Agent will fetch real-time prices from Binance/CoinGecko
-3. You'll get actual technical indicators, not fake data
-
-**What I can help with right now:**
-- Explain trading concepts (RSI, MACD, etc.)
-- Teaching strategies (scalping, swing trading)
-- Risk management guidance
-- Professional trading knowledge
-- Business automation strategies
-
-**For real-time price analysis**, please ensure:
-- AI Agent is running: \`python ai-agent/main.py\`
-- Then ask: "Analyze BTC" or "What's the price of ETH?"
-
----
-*No fake data - only real market information or educational content*
-    `.trim(),
-    metadata: { type: "warning", requires_ai_agent: true }
-  };
+  // AI agent is offline — route to educational content instead of a dead-end warning
+  return generateEducationalContent(message);
 }
 
 function generateEducationalContent(message: string): AIResponse {
@@ -931,53 +884,33 @@ Blockchain enables trust in a trustless environment - you don't need banks, gove
   if (lowerMsg.includes("how to") || lowerMsg.includes("what is") || lowerMsg.includes("explain") || lowerMsg.includes("help") || lowerMsg.includes("learn")) {
     return {
       content: "I can help you with many trading topics! Please select a question below to learn more.",
-      metadata: { 
+      metadata: {
         type: "suggestions",
-        questions: [
-          { category: "📊 Market Analysis", items: [
-            "Analyze BTC/USDT",
-            "Should I buy ETH?",
-            "What's the current trend?"
-          ]},
-          { category: "📈 Indicators", items: [
-            "Explain RSI",
-            "What is MACD?",
-            "How to use Fibonacci?",
-            "What is ATR?",
-            "Tell me about moving averages"
-          ]},
-          { category: "🛡️ Risk Management", items: [
-            "How to manage risk?",
-            "What is a stop loss?",
-            "What is position sizing?",
-            "How to avoid liquidation?"
-          ]},
-          { category: "📚 Strategies", items: [
-            "What is scalping?",
-            "Explain swing trading",
-            "What's day trading?"
-          ]},
-          { category: "🔬 Technical Analysis", items: [
-            "What is support and resistance?",
-            "Tell me about candlesticks",
-            "How to draw trendlines?"
-          ]}
+        suggestions: [
+          { question: "Explain RSI", label: "RSI", category: "📈 Indicators" },
+          { question: "What is MACD?", label: "MACD", category: "📈 Indicators" },
+          { question: "How to use Fibonacci?", label: "Fibonacci", category: "📈 Indicators" },
+          { question: "How to manage risk?", label: "Risk Management", category: "🛡️ Risk Management" },
+          { question: "What is a stop loss?", label: "Stop Loss", category: "🛡️ Risk Management" },
+          { question: "What is position sizing?", label: "Position Sizing", category: "🛡️ Risk Management" },
+          { question: "What is scalping?", label: "Scalping", category: "📚 Strategies" },
+          { question: "Explain swing trading", label: "Swing Trading", category: "📚 Strategies" },
+          { question: "What is support and resistance?", label: "Support & Resistance", category: "🔬 Technical Analysis" },
+          { question: "Tell me about candlesticks", label: "Candlesticks", category: "🔬 Technical Analysis" },
         ]
       }
     };
   }
   
   return {
-    content: "I apologize, but I couldn't find a specific answer to your question. 😊\n\nHowever, I can help you with many trading topics! Please select a question below or ask me something specific about:\n\n- 📊 Market Analysis (BTC, ETH prices & trends)\n- 📈 Technical Indicators (RSI, MACD, Moving Averages)\n- 🛡️ Risk Management (Stop Loss, Position Sizing)\n- 📚 Trading Strategies (Scalping, Swing Trading)\n- 💼 Business Automation (How to scale your trading)\n- 🪙 Cryptocurrency Basics (Bitcoin, Ethereum, Blockchain)\n\nTry rephrasing your question or asking something more specific!",
+    content: "I apologize, but I couldn't find a specific answer to your question. 😊 Try asking something specific about trading!",
     metadata: {
-      type: "apology",
-      questions: [
-        { category: "Quick Questions", items: [
-          "Analyze BTC",
-          "What is RSI?",
-          "How to manage risk?",
-          "What is Bitcoin?"
-        ]}
+      type: "suggestions",
+      suggestions: [
+        { question: "What is RSI?", label: "RSI", category: "Quick Questions" },
+        { question: "How to manage risk?", label: "Risk Management", category: "Quick Questions" },
+        { question: "What is Bitcoin?", label: "Bitcoin", category: "Quick Questions" },
+        { question: "Explain swing trading", label: "Swing Trading", category: "Quick Questions" },
       ]
     }
   };
@@ -1035,13 +968,10 @@ function generateAIResponse(userMessage: string): AIResponse {
 // New async version that uses AI agent when available
 async function generateAIResponseAsync(userMessage: string): Promise<AIResponse> {
   console.log(`\n🎯 generateAIResponseAsync called for: "${userMessage.substring(0, 50)}..."`);
-  console.log(`🔌 AI Agent status: ${aiAgentAvailable ? 'AVAILABLE' : 'NOT AVAILABLE'}`);
-  
-  // Try AI agent first
-  if (aiAgentAvailable) {
-    try {
-      console.log(`🚀 Attempting to call AI Agent...`);
-      const agentData = await callAIAgent(userMessage);
+  // Always try AI agent directly — no cached availability flag
+  try {
+    console.log(`🚀 Attempting to call AI Agent at ${AI_AGENT_URL}...`);
+    const agentData = await callAIAgent(userMessage);
       if (agentData && agentData.answer) {
         console.log(`✅ AI Agent returned response, length: ${agentData.answer.length}`);
         return {
@@ -1057,11 +987,8 @@ async function generateAIResponseAsync(userMessage: string): Promise<AIResponse>
       } else {
         console.log(`⚠️ AI Agent returned empty response, falling back...`);
       }
-    } catch (error) {
-      console.error("❌ AI agent call failed, using fallback:", error);
-    }
-  } else {
-    console.log(`⚠️ Skipping AI Agent (not available), using fallback...`);
+  } catch (error) {
+    console.error("❌ AI agent call failed, using fallback:", error);
   }
   
   // Fallback to built-in responses
