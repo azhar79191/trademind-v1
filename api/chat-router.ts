@@ -148,9 +148,73 @@ function extractPair(text: string): string | null {
   return null;
 }
 
-function generateMarketAnalysis(message: string): AIResponse {
-  // AI agent is offline — route to educational content instead of a dead-end warning
-  return generateEducationalContent(message);
+async function fetchLiveMarketData(coin: string) {
+  try {
+    const symbol = `${coin}USDT`;
+    const [tickerRes, klinesRes] = await Promise.all([
+      fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`, { signal: AbortSignal.timeout(5000) }),
+      fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=50`, { signal: AbortSignal.timeout(5000) }),
+    ]);
+    if (!tickerRes.ok || !klinesRes.ok) return null;
+    const ticker = await tickerRes.json();
+    const klines: any[][] = await klinesRes.json();
+    const closes = klines.map((k: any[]) => parseFloat(k[4]));
+
+    // RSI-14
+    let rsi: number | null = null;
+    if (closes.length >= 15) {
+      const diffs = closes.slice(-15).map((c, i, a) => i === 0 ? 0 : c - a[i - 1]).slice(1);
+      const gains = diffs.map(d => d > 0 ? d : 0);
+      const losses = diffs.map(d => d < 0 ? -d : 0);
+      const avgGain = gains.reduce((a, b) => a + b, 0) / 14;
+      const avgLoss = losses.reduce((a, b) => a + b, 0) / 14;
+      rsi = avgLoss === 0 ? 100 : Math.round(100 - 100 / (1 + avgGain / avgLoss));
+    }
+
+    // EMA helper
+    const ema = (data: number[], period: number) => {
+      const k = 2 / (period + 1);
+      return data.reduce((prev, cur) => cur * k + prev * (1 - k));
+    };
+
+    const macdLine = closes.length >= 26 ? ema(closes.slice(-26), 12) - ema(closes.slice(-26), 26) : 0;
+    const macdSignal = macdLine > 0 ? "Bullish" : "Bearish";
+    const ema20 = closes.length >= 20 ? ema(closes.slice(-20), 20) : closes[closes.length - 1];
+    const price = parseFloat(ticker.lastPrice);
+    const trend = price > ema20 ? "Uptrend" : "Downtrend";
+
+    return {
+      price,
+      change24h: parseFloat(ticker.priceChangePercent),
+      high: parseFloat(ticker.highPrice),
+      low: parseFloat(ticker.lowPrice),
+      volume: parseFloat(ticker.quoteVolume),
+      rsi,
+      macdSignal,
+      trend,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function generateMarketAnalysis(message: string): Promise<AIResponse> {
+  const coin = extractPair(message) ?? "BTC";
+  const data = await fetchLiveMarketData(coin);
+
+  if (!data) return generateEducationalContent(message);
+
+  const { price, change24h, high, low, volume, rsi, macdSignal, trend } = data;
+  const changeSign = change24h >= 0 ? "+" : "";
+  const volFmt = volume >= 1e9 ? (volume / 1e9).toFixed(1) + "B" : (volume / 1e6).toFixed(0) + "M";
+  const rsiLabel = rsi === null ? "N/A" : rsi < 30 ? `${rsi} (Oversold)` : rsi > 70 ? `${rsi} (Overbought)` : `${rsi} (Neutral)`;
+  const rsiSignal = rsi !== null && rsi < 30 ? "Buy" : rsi !== null && rsi > 70 ? "Sell" : "Neutral";
+  const signal = rsi !== null && rsi < 35 ? "BUY — oversold conditions" : rsi !== null && rsi > 65 ? "SELL — overbought conditions" : "HOLD — no strong signal";
+
+  return {
+    content: `# Live Market Analysis: ${coin}/USDT\n\n## Current Price\n**$${price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}** (${changeSign}${change24h.toFixed(2)}% 24h)\n\n## 24h Stats\n| Metric | Value |\n|--------|-------|\n| High | $${high.toLocaleString("en-US", { minimumFractionDigits: 2 })} |\n| Low | $${low.toLocaleString("en-US", { minimumFractionDigits: 2 })} |\n| Volume | $${volFmt} |\n| Trend | ${trend} |\n\n## Technical Indicators\n| Indicator | Value | Signal |\n|-----------|-------|--------|\n| RSI (14) | ${rsiLabel} | ${rsiSignal} |\n| MACD | ${macdSignal} | ${macdSignal === "Bullish" ? "Buy" : "Sell"} |\n| EMA-20 Trend | ${trend} | ${trend === "Uptrend" ? "Bullish" : "Bearish"} |\n\n## Signal\n${signal}\n\n> Live data from Binance. Always do your own research before trading.`,
+    metadata: { source: "live_binance", pair: `${coin}/USDT`, timestamp: new Date().toISOString() }
+  };
 }
 
 function generateEducationalContent(message: string): AIResponse {
@@ -916,7 +980,7 @@ Blockchain enables trust in a trustless environment - you don't need banks, gove
   };
 }
 
-function generateAIResponse(userMessage: string): AIResponse {
+async function generateAIResponse(userMessage: string): Promise<AIResponse> {
   const lower = userMessage.toLowerCase();
   
   // Handle greetings first (including Islamic greetings)
@@ -960,6 +1024,7 @@ function generateAIResponse(userMessage: string): AIResponse {
   if (["buy", "sell", "should i", "analyze", "analysis", "btc", "eth", "sol", "price", "trend", "signal"].some(k => lower.includes(k))) {
     return generateMarketAnalysis(userMessage);
   }
+  // unreachable sync path kept for type safety
   
   // Handle educational queries
   return generateEducationalContent(userMessage);
@@ -993,5 +1058,5 @@ async function generateAIResponseAsync(userMessage: string): Promise<AIResponse>
   
   // Fallback to built-in responses
   console.log(`📚 Using fallback knowledge base...`);
-  return generateAIResponse(userMessage);
+  return await generateAIResponse(userMessage);
 }
