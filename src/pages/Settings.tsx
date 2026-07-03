@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
 import { useActivePair, AVAILABLE_PAIRS } from "@/providers/TradingPairContext";
+import { useTheme } from "@/providers/ThemeContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   User, Shield, Bell, Globe, Key, Smartphone, Save, CheckCircle2,
-  Plus, Trash2, X,
+  Plus, Trash2, X, Sun, Moon,
 } from "lucide-react";
 
 // ── Exchange Key Manager ──────────────────────────────────────────────
@@ -70,7 +71,7 @@ function ExchangeKeyManager() {
                 value={form.exchange}
                 onChange={(e) => setForm({ ...form, exchange: e.target.value as typeof form.exchange })}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "white" }}
+                style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}
               >
                 {EXCHANGES.map((ex) => <option key={ex} value={ex}>{ex.charAt(0).toUpperCase() + ex.slice(1)}</option>)}
               </select>
@@ -83,7 +84,7 @@ function ExchangeKeyManager() {
                 onChange={(e) => setForm({ ...form, label: e.target.value })}
                 placeholder="e.g. Binance Testnet"
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "white" }}
+                style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}
               />
             </div>
           </div>
@@ -95,7 +96,7 @@ function ExchangeKeyManager() {
               onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
               placeholder="Paste your API key"
               className="w-full px-3 py-2 rounded-lg text-sm font-mono-data outline-none"
-              style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "white" }}
+              style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}
             />
           </div>
           <div>
@@ -106,7 +107,7 @@ function ExchangeKeyManager() {
               onChange={(e) => setForm({ ...form, apiSecret: e.target.value })}
               placeholder="Paste your API secret"
               className="w-full px-3 py-2 rounded-lg text-sm font-mono-data outline-none"
-              style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "white" }}
+              style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}
             />
           </div>
           {needsPassphrase && (
@@ -118,7 +119,7 @@ function ExchangeKeyManager() {
                 onChange={(e) => setForm({ ...form, passphrase: e.target.value })}
                 placeholder="Required for OKX / Coinbase / Kraken"
                 className="w-full px-3 py-2 rounded-lg text-sm font-mono-data outline-none"
-                style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "white" }}
+                style={{ background: "var(--navy-surface)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}
               />
             </div>
           )}
@@ -182,6 +183,7 @@ function ExchangeKeyManager() {
 // ── Settings Page ─────────────────────────────────────────────────────
 export default function Settings() {
   const { user, refresh } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "preferences">("profile");
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -212,13 +214,16 @@ export default function Settings() {
       setSecurity({ twoFactor: user.twoFactorEnabled || false, loginNotifications: true, tradingPin: false });
       const p = user.preferences as any;
       if (p) {
-        setPreferences({ defaultExchange: p.defaultExchange || "binance", defaultPair: p.defaultPair || "BTC/USDT", riskLevel: p.riskLevel || "medium", theme: p.theme || "dark" });
+        setPreferences({ defaultExchange: p.defaultExchange || "binance", defaultPair: p.defaultPair || "BTC/USDT", riskLevel: p.riskLevel || "medium", theme: p.theme || theme });
         setNotifications({ signalAlerts: p.notificationsEnabled !== false, tradeExecutions: true, priceAlerts: true, newsDigest: false, weeklyReport: true });
+      } else {
+        setPreferences((prev) => ({ ...prev, theme }));
       }
     }
   }, [user]);
 
   const handleSave = () => {
+    setTheme(preferences.theme as "dark" | "light");
     updateProfileMutation.mutate({
       name: profile.name,
       twoFactorEnabled: security.twoFactor,
@@ -296,15 +301,15 @@ export default function Settings() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--grey-dim)" }}>Display Name</label>
-                    <input type="text" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "white" }} />
+                    <input type="text" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }} />
                   </div>
                   <div>
                     <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--grey-dim)" }}>Email</label>
-                    <input type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "white" }} />
+                    <input type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }} />
                   </div>
                   <div>
                     <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--grey-dim)" }}>Timezone</label>
-                    <select value={profile.timezone} onChange={(e) => setProfile({ ...profile, timezone: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "white" }}>
+                    <select value={profile.timezone} onChange={(e) => setProfile({ ...profile, timezone: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}>
                       <option value="UTC">UTC</option>
                       <option value="EST">EST (New York)</option>
                       <option value="CST">CST (Chicago)</option>
@@ -316,7 +321,7 @@ export default function Settings() {
                   </div>
                   <div>
                     <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--grey-dim)" }}>Language</label>
-                    <select value={profile.language} onChange={(e) => setProfile({ ...profile, language: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "white" }}>
+                    <select value={profile.language} onChange={(e) => setProfile({ ...profile, language: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}>
                       <option value="en">English</option>
                       <option value="zh">Chinese</option>
                       <option value="ja">Japanese</option>
@@ -402,7 +407,7 @@ export default function Settings() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--grey-dim)" }}>Default Exchange</label>
-                    <select value={preferences.defaultExchange} onChange={(e) => setPreferences({ ...preferences, defaultExchange: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "white" }}>
+                    <select value={preferences.defaultExchange} onChange={(e) => setPreferences({ ...preferences, defaultExchange: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}>
                       <option value="binance">Binance</option>
                       <option value="bybit">Bybit</option>
                       <option value="okx">OKX</option>
@@ -412,7 +417,7 @@ export default function Settings() {
                   </div>
                   <div>
                     <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--grey-dim)" }}>Default Trading Pair</label>
-                    <select value={preferences.defaultPair} onChange={(e) => setPreferences({ ...preferences, defaultPair: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "white" }}>
+                    <select value={preferences.defaultPair} onChange={(e) => setPreferences({ ...preferences, defaultPair: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}>
                       {AVAILABLE_PAIRS.map((p) => (
                         <option key={p} value={p}>{p}</option>
                       ))}
@@ -420,7 +425,7 @@ export default function Settings() {
                   </div>
                   <div>
                     <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--grey-dim)" }}>Default Risk Level</label>
-                    <select value={preferences.riskLevel} onChange={(e) => setPreferences({ ...preferences, riskLevel: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "white" }}>
+                    <select value={preferences.riskLevel} onChange={(e) => setPreferences({ ...preferences, riskLevel: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "var(--white-pure)" }}>
                       <option value="low">Conservative</option>
                       <option value="medium">Balanced</option>
                       <option value="high">Aggressive</option>
@@ -428,9 +433,23 @@ export default function Settings() {
                   </div>
                   <div>
                     <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--grey-dim)" }}>Theme</label>
-                    <select value={preferences.theme} onChange={(e) => setPreferences({ ...preferences, theme: e.target.value })} className="w-full px-3 py-2.5 rounded-lg text-sm outline-none" style={{ background: "var(--navy-base)", border: "1px solid var(--navy-highlight)", color: "white" }}>
-                      <option value="dark">Dark (Navy)</option>
-                    </select>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["dark", "light"] as const).map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setPreferences({ ...preferences, theme: t })}
+                          className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all border-2"
+                          style={{
+                            background: preferences.theme === t ? "var(--navy-highlight)" : "var(--navy-base)",
+                            borderColor: preferences.theme === t ? "var(--lime-primary)" : "var(--navy-highlight)",
+                            color: preferences.theme === t ? "var(--lime-primary)" : "var(--grey-dim)",
+                          }}
+                        >
+                          {t === "dark" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                          {t === "dark" ? "Dark" : "Light"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
